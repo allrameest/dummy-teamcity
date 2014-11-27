@@ -1,0 +1,11 @@
+﻿{{#each Projects}}
+    <h1>{{Name}}</h1>
+    {{#each BuildTypes}}
+        <h2>{{Name}}</h2>
+        <form action="/build" method="post">
+            <input type="hidden" name="Id" value="{{Id}}" />
+            <button type="submit" name="Success" value="true">Success build</button>
+            <button type="submit" name="Success" value="false">Failed build</button>
+        </form>
+    {{/each}}
+{{/each}}

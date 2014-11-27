@@ -9,38 +9,7 @@ namespace DummyTeamCity
     {
         private const string BaseUrl = "/guestAuth/app/rest";
 
-        private static readonly IDictionary<string, Project> ProjectMap = new Dictionary<string, Project>();
-        private static readonly IDictionary<string, BuildType> BuildTypeMap = new Dictionary<string, BuildType>();
         private static readonly Random Rnd = new Random();
-
-        static ApiModule()
-        {
-            var foo = new Project
-            {
-                Id = "Foo",
-                Name = "Foo",
-                ParentId = "_Root",
-                BuildTypes = new[] { "Foo_Build", "Foo_Test" }
-            };
-
-            var fooBuild = new BuildType
-            {
-                Id = "Foo_Build",
-                Name = "build",
-                Project = foo
-            };
-            var fooTest = new BuildType
-            {
-                Id = "Foo_Test",
-                Name = "test",
-                Project = foo
-            };
-
-            ProjectMap.Add("Foo", foo);
-
-            BuildTypeMap.Add("Foo_Build", fooBuild);
-            BuildTypeMap.Add("Foo_Test", fooTest);
-        }
 
         public ApiModule()
             : base(BaseUrl)
@@ -60,8 +29,8 @@ namespace DummyTeamCity
         {
             return new
             {
-                count = ProjectMap.Count,
-                project = (from kvp in ProjectMap
+                count = Storage.ProjectMap.Count,
+                project = (from kvp in Storage.ProjectMap
                     let id = kvp.Key
                     let project = kvp.Value
                     select new
@@ -77,13 +46,13 @@ namespace DummyTeamCity
         private static object Project(string projectId)
         {
             Project project;
-            if (!ProjectMap.TryGetValue(projectId, out project))
+            if (!Storage.ProjectMap.TryGetValue(projectId, out project))
             {
                 return 404;
             }
 
             var buildTypes = (from btId in project.BuildTypes
-                let bt = BuildTypeMap[btId]
+                let bt = Storage.BuildTypeMap[btId]
                 select new
                 {
                     id = btId,
@@ -115,7 +84,7 @@ namespace DummyTeamCity
         private static object BuildType(string buildTypeId)
         {
             BuildType buildType;
-            if (!BuildTypeMap.TryGetValue(buildTypeId, out buildType))
+            if (!Storage.BuildTypeMap.TryGetValue(buildTypeId, out buildType))
             {
                 return 404;
             }
@@ -146,27 +115,28 @@ namespace DummyTeamCity
         private static object Builds(string buildTypeId)
         {
             BuildType buildType;
-            if (!BuildTypeMap.TryGetValue(buildTypeId, out buildType))
+            if (!Storage.BuildTypeMap.TryGetValue(buildTypeId, out buildType))
             {
                 return 404;
             }
+
+            var builds = Storage.BuildMap.GetOrAdd(buildTypeId, s => new List<Build>());
 
             return new
             {
                 count = 1,
                 href = string.Format("{0}/buildTypes/id:{1}/builds/", BaseUrl, buildTypeId),
                 nextHref = "?",
-                build = new[]
-                {
-                    new
+                build = builds
+                .Select(b => new
                     {
-                        id = 1,
+                        id = b.Id,
                         buildTypeId,
                         number = "1",
-                        status = Rnd.Next(2) == 0 ? "SUCCESS" : "FAILED",
+                        status = b.Success ? "SUCCESS" : "FAILED",
                         state = "finished"
-                    }
-                }
+                    })
+                .ToArray()
             };
         }
     }
